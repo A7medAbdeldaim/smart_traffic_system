@@ -226,9 +226,15 @@ async def health_check():
 
 
 # Import routes after app creation to avoid circular imports
-from . import routes, websocket, video_stream
+from . import routes, websocket
 
 # Include routers
 app.include_router(routes.router)
 app.include_router(websocket.router)
-app.include_router(video_stream.router)
+
+# Optionally import video_stream if OpenCV is available (not needed for demo)
+try:
+    from . import video_stream
+    app.include_router(video_stream.router)
+except ImportError:
+    print("⚠️  Video streaming module not available (OpenCV not installed) - skipping")
