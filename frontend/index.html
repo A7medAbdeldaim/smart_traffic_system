@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic Control System | King Khalid University</title>
+    <link rel="icon" type="image/svg+xml" href="/static/assets/favicon.svg">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <div class="logo">
+                    <div class="logo-icon">🚦</div>
+                    <div class="logo-text">SMART TRAFFIC CONTROL SYSTEM</div>
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="mode-toggle" id="mode-toggle">
+                    <div class="mode-dot"></div>
+                    <span id="mode-text">AI Mode</span>
+                </div>
+                <div class="connection-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="connection-text">Connected</span>
+                </div>
+                <div class="clock" id="clock">--:--:--</div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Sidebar -->
+            <div class="left-sidebar">
+                <!-- North Lane Stats -->
+                <div class="lane-panel" id="lane-N" data-lane="N">
+                    <div class="lane-header">
+                        <div class="lane-title">
+                            <span class="lane-arrow">↑</span>
+                            <span>NORTH</span>
+                        </div>
+                        <div class="signal-indicator red" id="signal-N"></div>
+                    </div>
+                    <div class="lane-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Vehicles:</span>
+                            <span class="stat-value large" id="vehicles-N">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Queue:</span>
+                            <span class="stat-value" id="queue-N">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Density:</span>
+                            <span class="stat-value" id="density-val-N">0</span>
+                        </div>
+                    </div>
+                    <div class="countdown-timer" id="countdown-N">--</div>
+                </div>
+
+                <!-- South Lane Stats -->
+                <div class="lane-panel" id="lane-S" data-lane="S">
+                    <div class="lane-header">
+                        <div class="lane-title">
+                            <span class="lane-arrow">↓</span>
+                            <span>SOUTH</span>
+                        </div>
+                        <div class="signal-indicator red" id="signal-S"></div>
+                    </div>
+                    <div class="lane-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Vehicles:</span>
+                            <span class="stat-value large" id="vehicles-S">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Queue:</span>
+                            <span class="stat-value" id="queue-S">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Density:</span>
+                            <span class="stat-value" id="density-val-S">0</span>
+                        </div>
+                    </div>
+                    <div class="countdown-timer" id="countdown-S">--</div>
+                </div>
+
+                <!-- East Lane Stats -->
+                <div class="lane-panel" id="lane-E" data-lane="E">
+                    <div class="lane-header">
+                        <div class="lane-title">
+                            <span class="lane-arrow">→</span>
+                            <span>EAST</span>
+                        </div>
+                        <div class="signal-indicator red" id="signal-E"></div>
+                    </div>
+                    <div class="lane-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Vehicles:</span>
+                            <span class="stat-value large" id="vehicles-E">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Queue:</span>
+                            <span class="stat-value" id="queue-E">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Density:</span>
+                            <span class="stat-value" id="density-val-E">0</span>
+                        </div>
+                    </div>
+                    <div class="countdown-timer" id="countdown-E">--</div>
+                </div>
+
+                <!-- West Lane Stats -->
+                <div class="lane-panel" id="lane-W" data-lane="W">
+                    <div class="lane-header">
+                        <div class="lane-title">
+                            <span class="lane-arrow">←</span>
+                            <span>WEST</span>
+                        </div>
+                        <div class="signal-indicator red" id="signal-W"></div>
+                    </div>
+                    <div class="lane-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">Vehicles:</span>
+                            <span class="stat-value large" id="vehicles-W">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Queue:</span>
+                            <span class="stat-value" id="queue-W">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Density:</span>
+                            <span class="stat-value" id="density-val-W">0</span>
+                        </div>
+                    </div>
+                    <div class="countdown-timer" id="countdown-W">--</div>
+                </div>
+
+                <!-- AI Parameters -->
+                <div class="ai-params">
+                    <h3>AI Parameters</h3>
+                    <div class="param-row">
+                        <span class="param-label">Min Green:</span>
+                        <span class="param-value">10s</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Max Green:</span>
+                        <span class="param-value">120s</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Cycle Time:</span>
+                        <span class="param-value">180s</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Car Weight:</span>
+                        <span class="param-value">1.0</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Truck Weight:</span>
+                        <span class="param-value">2.5</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Bus Weight:</span>
+                        <span class="param-value">3.0</span>
+                    </div>
+                </div>
+
+                <!-- Performance Stats -->
+                <div class="stats-section">
+                    <h3>Performance</h3>
+                    <div class="param-row">
+                        <span class="param-label">Avg Wait:</span>
+                        <span class="param-value" id="avg-wait">--</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Total Vehicles:</span>
+                        <span class="param-value" id="total-vehicles">--</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">AI Improvement:</span>
+                        <span class="param-value positive" id="improvement">--</span>
+                    </div>
+                    <div class="param-row">
+                        <span class="param-label">Emergency:</span>
+                        <span class="param-value" id="emergency-status">NONE</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Intersection (Full Height) -->
+            <div class="center-intersection">
+                <div class="intersection-title">🚦 LIVE 4-WAY INTERSECTION MONITOR</div>
+                <svg id="intersection-svg" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Road background -->
+                    <rect width="800" height="800" fill="#0a0e17"/>
+
+                    <!-- Vertical road (North-South) -->
+                    <rect x="300" y="0" width="200" height="800" fill="#1f2937"/>
+                    <line x1="400" y1="0" x2="400" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                    <line x1="400" y1="500" x2="400" y2="800" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+
+                    <!-- Horizontal road (East-West) -->
+                    <rect x="0" y="300" width="800" height="200" fill="#1f2937"/>
+                    <line x1="0" y1="400" x2="300" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                    <line x1="500" y1="400" x2="800" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+
+                    <!-- Center intersection -->
+                    <rect x="300" y="300" width="200" height="200" fill="#111827"/>
+
+                    <!-- Lane Labels and Counters - North -->
+                    <rect x="350" y="10" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                    <text x="400" y="30" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">NORTH</text>
+                    <text id="count-N" x="400" y="48" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+
+                    <!-- Timer North -->
+                    <circle id="timer-bg-N" cx="400" cy="280" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                    <text id="timer-N" x="400" y="290" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+
+                    <!-- Lane Labels and Counters - South -->
+                    <rect x="350" y="740" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                    <text x="400" y="760" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">SOUTH</text>
+                    <text id="count-S" x="400" y="778" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+
+                    <!-- Timer South -->
+                    <circle id="timer-bg-S" cx="400" cy="520" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                    <text id="timer-S" x="400" y="530" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+
+                    <!-- Lane Labels and Counters - East -->
+                    <rect x="690" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                    <text x="740" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">EAST</text>
+                    <text id="count-E" x="740" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+
+                    <!-- Timer East -->
+                    <circle id="timer-bg-E" cx="520" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                    <text id="timer-E" x="520" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+
+                    <!-- Lane Labels and Counters - West -->
+                    <rect x="10" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                    <text x="60" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">WEST</text>
+                    <text id="count-W" x="60" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+
+                    <!-- Timer West -->
+                    <circle id="timer-bg-W" cx="280" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                    <text id="timer-W" x="280" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+
+                    <!-- Traffic lights - North -->
+                    <circle id="light-N" cx="400" cy="280" r="12" fill="#ef4444"/>
+
+                    <!-- Traffic lights - South -->
+                    <circle id="light-S" cx="400" cy="520" r="12" fill="#ef4444"/>
+
+                    <!-- Traffic lights - East -->
+                    <circle id="light-E" cx="520" cy="400" r="12" fill="#ef4444"/>
+
+                    <!-- Traffic lights - West -->
+                    <circle id="light-W" cx="280" cy="400" r="12" fill="#ef4444"/>
+
+                    <!-- Vehicles layer (animated) -->
+                    <g id="vehicles-layer"></g>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Emergency Override Button -->
+        <button class="emergency-btn" id="emergency-btn">
+            🚨 Emergency Override
+        </button>
+
+        <!-- Emergency Modal -->
+        <div class="modal" id="emergency-modal">
+            <div class="modal-content">
+                <div class="modal-title">Select Emergency Lane</div>
+                <div class="modal-buttons">
+                    <button class="lane-btn" data-lane="N">↑ NORTH</button>
+                    <button class="lane-btn" data-lane="E">→ EAST</button>
+                    <button class="lane-btn" data-lane="S">↓ SOUTH</button>
+                    <button class="lane-btn" data-lane="W">← WEST</button>
+                </div>
+                <button class="modal-close" id="modal-close">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/intersection.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

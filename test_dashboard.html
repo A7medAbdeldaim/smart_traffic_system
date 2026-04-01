@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Test</title>
+</head>
+<body>
+    <h1>Dashboard Test</h1>
+    <p>Testing element IDs...</p>
+    <script>
+        const elements = [
+            'vehicles-N', 'vehicles-S', 'vehicles-E', 'vehicles-W',
+            'queue-N', 'queue-S', 'queue-E', 'queue-W',
+            'density-val-N', 'density-val-S', 'density-val-E', 'density-val-W',
+            'countdown-N', 'countdown-S', 'countdown-E', 'countdown-W',
+            'signal-N', 'signal-S', 'signal-E', 'signal-W',
+            'light-N', 'light-S', 'light-E', 'light-W',
+            'timer-N', 'timer-S', 'timer-E', 'timer-W',
+            'count-N', 'count-S', 'count-E', 'count-W'
+        ];
+
+        setTimeout(() => {
+            const iframe = document.createElement('iframe');
+            iframe.src = '/';
+            iframe.style.width = '100%';
+            iframe.style.height = '800px';
+            document.body.appendChild(iframe);
+
+            iframe.onload = () => {
+                const doc = iframe.contentDocument;
+                console.log('Dashboard loaded');
+                elements.forEach(id => {
+                    const el = doc.getElementById(id);
+                    if (el) {
+                        console.log(`✓ Found ${id}`, el);
+                    } else {
+                        console.error(`✗ Missing ${id}`);
+                    }
+                });
+            };
+        }, 1000);
+    </script>
+</body>
+</html>

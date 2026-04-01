@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+smart_traffic.db
+
+# Logs
+*.log
+logs/
+
+# SUMO Generated Files
+simulation/network/*.net.xml
+simulation/network/*.rou.xml
+simulation/network/*.sumocfg
+simulation/network/views.xml
+
+# YOLO Models (download on first run)
+models/*.pt
+!models/.gitkeep
+
+# Video files
+video/*.mp4
+video/*.avi
+!video/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables (keep .env.example, ignore local)
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Frame captures
+frames/
