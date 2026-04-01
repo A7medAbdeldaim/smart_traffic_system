@@ -1,0 +1,4 @@
+# Render-specific ignore file
+__pycache__/
+*.pyc
+.git/
