@@ -91,7 +91,9 @@ async def lifespan(app: FastAPI):
                             for lane, config in signal_override.items():
                                 await db_manager.update_signal_state(
                                     intersection_id, lane,
-                                    config['phase'], config['remaining']
+                                    config['phase'],
+                                    config.get('duration', 30),
+                                    config.get('remaining', 0)
                                 )
                     else:
                         # Normal optimization
@@ -112,10 +114,16 @@ async def lifespan(app: FastAPI):
                         # Apply signal timings to database every 5 seconds
                         if cycle_count % 5 == 0:
                             for lane, data in lane_data.items():
+                                # Get duration from green_times or use default
+                                phase = data.get('phase', 'red')
+                                duration = green_times.get(lane, 30) if phase == 'green' else 4
+                                remaining = data.get('remaining', 0)
+
                                 await db_manager.update_signal_state(
                                     intersection_id, lane,
-                                    data.get('phase', 'red'),
-                                    data.get('remaining', 0)
+                                    phase,
+                                    duration,
+                                    remaining
                                 )
 
                     # Log traffic data every 10 cycles
