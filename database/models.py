@@ -95,3 +95,19 @@ class EmergencyEvent(Base):
     response_time_ms = Column(Integer)
     detected_at = Column(DateTime, default=func.now())
     resolved_at = Column(DateTime, nullable=True)
+
+
+class Violation(Base):
+    """Red-light violation records"""
+    __tablename__ = 'violations'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plate_number = Column(String(32), default='UNKNOWN')
+    reason = Column(String(64), default='Red Light')
+    image_path = Column(String(255))
+    direction = Column(String(16), default='S-CAM')
+    status = Column(
+        Enum('Unpaid', 'Paid', name='violation_status_enum'),
+        default='Unpaid'
+    )
+    detected_at = Column(DateTime, default=func.now())

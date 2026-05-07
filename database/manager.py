@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 import time
 
 from .config import db_config
-from .models import Base, Intersection, Camera, TrafficSignal, TrafficDataLog, EmergencyEvent
+from .models import Base, Intersection, Camera, TrafficSignal, TrafficDataLog, EmergencyEvent, Violation
 
 
 async def retry_on_lock(func, max_retries=3, initial_delay=0.1):
@@ -361,6 +361,61 @@ class DatabaseManager:
                 'total_emergencies': total_emergencies,
                 'improvement_percentage': 37.0  # TODO: Calculate actual improvement
             }
+
+
+    # ── Red-light violations ──────────────────────────────────────────────────
+    async def log_violation(
+        self,
+        plate_number: str,
+        image_path: str,
+        direction: str = "S-CAM",
+        reason: str = "Red Light",
+    ) -> int:
+        async def _write():
+            async with self.session_maker() as session:
+                async with session.begin():
+                    v = Violation(
+                        plate_number=plate_number,
+                        image_path=image_path,
+                        direction=direction,
+                        reason=reason,
+                        status="Unpaid",
+                    )
+                    session.add(v)
+                await session.refresh(v)
+                return v.id
+        return await retry_on_lock(_write)
+
+    async def get_violations(self, limit: int = 50) -> List[Dict]:
+        async with self.session_maker() as session:
+            result = await session.execute(
+                select(Violation).order_by(Violation.detected_at.desc()).limit(limit)
+            )
+            rows = result.scalars().all()
+            return [
+                {
+                    "id": v.id,
+                    "plate_number": v.plate_number,
+                    "reason": v.reason,
+                    "image_url": v.image_path,
+                    "direction": v.direction,
+                    "status": v.status,
+                    "timestamp": v.detected_at.isoformat() if v.detected_at else None,
+                }
+                for v in rows
+            ]
+
+    async def mark_violation_paid(self, violation_id: int) -> bool:
+        async def _write():
+            async with self.session_maker() as session:
+                async with session.begin():
+                    result = await session.execute(
+                        update(Violation)
+                        .where(Violation.id == violation_id)
+                        .values(status="Paid")
+                    )
+                    return result.rowcount > 0
+        return await retry_on_lock(_write)
 
 
 # Global instance

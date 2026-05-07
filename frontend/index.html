@@ -190,77 +190,106 @@
                 </div>
             </div>
 
-            <!-- Center Intersection (Full Height) -->
+            <!-- Center: tabbed view (Videos / Simulation) -->
             <div class="center-intersection">
-                <div class="intersection-title">🚦 LIVE 4-WAY INTERSECTION MONITOR</div>
-                <svg id="intersection-svg" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Road background -->
-                    <rect width="800" height="800" fill="#0a0e17"/>
+                <div class="tab-bar" role="tablist">
+                    <button class="tab-button active" data-tab="videos" role="tab" aria-selected="true">
+                        🎥 Live Videos
+                    </button>
+                    <button class="tab-button" data-tab="simulation" role="tab" aria-selected="false">
+                        🚦 Simulation
+                    </button>
+                </div>
 
-                    <!-- Vertical road (North-South) -->
-                    <rect x="300" y="0" width="200" height="800" fill="#1f2937"/>
-                    <line x1="400" y1="0" x2="400" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
-                    <line x1="400" y1="500" x2="400" y2="800" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                <!-- Videos tab: 2×2 MJPEG grid -->
+                <div class="tab-panel active" id="panel-videos" role="tabpanel">
+                    <div class="video-grid">
+                        <div class="video-tile" data-lane="N">
+                            <div class="video-tile-header">
+                                <span class="video-tile-label">↑ NORTH</span>
+                                <span class="video-tile-badge" id="badge-N">RED</span>
+                            </div>
+                            <img class="video-tile-feed" data-lane="N" src="/api/video/N" alt="North lane feed"
+                                 onerror="this.classList.add('feed-error')">
+                        </div>
+                        <div class="video-tile" data-lane="E">
+                            <div class="video-tile-header">
+                                <span class="video-tile-label">→ EAST</span>
+                                <span class="video-tile-badge" id="badge-E">RED</span>
+                            </div>
+                            <img class="video-tile-feed" data-lane="E" src="/api/video/E" alt="East lane feed"
+                                 onerror="this.classList.add('feed-error')">
+                        </div>
+                        <div class="video-tile" data-lane="S">
+                            <div class="video-tile-header">
+                                <span class="video-tile-label">↓ SOUTH</span>
+                                <span class="video-tile-badge" id="badge-S">RED</span>
+                            </div>
+                            <img class="video-tile-feed" data-lane="S" src="/api/video/S" alt="South lane feed"
+                                 onerror="this.classList.add('feed-error')">
+                        </div>
+                        <div class="video-tile" data-lane="W">
+                            <div class="video-tile-header">
+                                <span class="video-tile-label">← WEST</span>
+                                <span class="video-tile-badge" id="badge-W">RED</span>
+                            </div>
+                            <img class="video-tile-feed" data-lane="W" src="/api/video/W" alt="West lane feed"
+                                 onerror="this.classList.add('feed-error')">
+                        </div>
+                    </div>
+                </div>
 
-                    <!-- Horizontal road (East-West) -->
-                    <rect x="0" y="300" width="800" height="200" fill="#1f2937"/>
-                    <line x1="0" y1="400" x2="300" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
-                    <line x1="500" y1="400" x2="800" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                <!-- Simulation tab: animated SVG schematic -->
+                <div class="tab-panel" id="panel-simulation" role="tabpanel">
+                    <svg id="intersection-svg" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="800" height="800" fill="#0a0e17"/>
 
-                    <!-- Center intersection -->
-                    <rect x="300" y="300" width="200" height="200" fill="#111827"/>
+                        <rect x="300" y="0" width="200" height="800" fill="#1f2937"/>
+                        <line x1="400" y1="0" x2="400" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                        <line x1="400" y1="500" x2="400" y2="800" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
 
-                    <!-- Lane Labels and Counters - North -->
-                    <rect x="350" y="10" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
-                    <text x="400" y="30" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">NORTH</text>
-                    <text id="count-N" x="400" y="48" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+                        <rect x="0" y="300" width="800" height="200" fill="#1f2937"/>
+                        <line x1="0" y1="400" x2="300" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
+                        <line x1="500" y1="400" x2="800" y2="400" stroke="#4b5563" stroke-width="3" stroke-dasharray="15,15"/>
 
-                    <!-- Timer North -->
-                    <circle id="timer-bg-N" cx="400" cy="280" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
-                    <text id="timer-N" x="400" y="290" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+                        <rect x="300" y="300" width="200" height="200" fill="#111827"/>
 
-                    <!-- Lane Labels and Counters - South -->
-                    <rect x="350" y="740" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
-                    <text x="400" y="760" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">SOUTH</text>
-                    <text id="count-S" x="400" y="778" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+                        <rect x="350" y="10" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                        <text x="400" y="30" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">NORTH</text>
+                        <text id="count-N" x="400" y="48" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
 
-                    <!-- Timer South -->
-                    <circle id="timer-bg-S" cx="400" cy="520" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
-                    <text id="timer-S" x="400" y="530" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+                        <circle id="timer-bg-N" cx="400" cy="280" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                        <text id="timer-N" x="400" y="290" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
 
-                    <!-- Lane Labels and Counters - East -->
-                    <rect x="690" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
-                    <text x="740" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">EAST</text>
-                    <text id="count-E" x="740" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+                        <rect x="350" y="740" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                        <text x="400" y="760" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">SOUTH</text>
+                        <text id="count-S" x="400" y="778" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
 
-                    <!-- Timer East -->
-                    <circle id="timer-bg-E" cx="520" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
-                    <text id="timer-E" x="520" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+                        <circle id="timer-bg-S" cx="400" cy="520" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                        <text id="timer-S" x="400" y="530" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
 
-                    <!-- Lane Labels and Counters - West -->
-                    <rect x="10" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
-                    <text x="60" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">WEST</text>
-                    <text id="count-W" x="60" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
+                        <rect x="690" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                        <text x="740" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">EAST</text>
+                        <text id="count-E" x="740" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
 
-                    <!-- Timer West -->
-                    <circle id="timer-bg-W" cx="280" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
-                    <text id="timer-W" x="280" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
+                        <circle id="timer-bg-E" cx="520" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                        <text id="timer-E" x="520" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
 
-                    <!-- Traffic lights - North -->
-                    <circle id="light-N" cx="400" cy="280" r="12" fill="#ef4444"/>
+                        <rect x="10" y="375" width="100" height="50" fill="rgba(17, 24, 39, 0.9)" rx="5"/>
+                        <text x="60" y="395" text-anchor="middle" fill="#06b6d4" font-size="14" font-weight="bold">WEST</text>
+                        <text id="count-W" x="60" y="413" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">0 vehicles</text>
 
-                    <!-- Traffic lights - South -->
-                    <circle id="light-S" cx="400" cy="520" r="12" fill="#ef4444"/>
+                        <circle id="timer-bg-W" cx="280" cy="400" r="25" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2"/>
+                        <text id="timer-W" x="280" y="410" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">30</text>
 
-                    <!-- Traffic lights - East -->
-                    <circle id="light-E" cx="520" cy="400" r="12" fill="#ef4444"/>
+                        <circle id="light-N" cx="400" cy="280" r="12" fill="#ef4444"/>
+                        <circle id="light-S" cx="400" cy="520" r="12" fill="#ef4444"/>
+                        <circle id="light-E" cx="520" cy="400" r="12" fill="#ef4444"/>
+                        <circle id="light-W" cx="280" cy="400" r="12" fill="#ef4444"/>
 
-                    <!-- Traffic lights - West -->
-                    <circle id="light-W" cx="280" cy="400" r="12" fill="#ef4444"/>
-
-                    <!-- Vehicles layer (animated) -->
-                    <g id="vehicles-layer"></g>
-                </svg>
+                        <g id="vehicles-layer"></g>
+                    </svg>
+                </div>
             </div>
         </div>
 
@@ -287,5 +316,25 @@
     <!-- App JavaScript -->
     <script src="/static/js/intersection.js"></script>
     <script src="/static/js/app.js"></script>
+    <script>
+        // Tab switcher
+        (function () {
+            const buttons = document.querySelectorAll('.tab-button');
+            const panels = document.querySelectorAll('.tab-panel');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const target = btn.dataset.tab;
+                    buttons.forEach(b => {
+                        const active = b.dataset.tab === target;
+                        b.classList.toggle('active', active);
+                        b.setAttribute('aria-selected', active);
+                    });
+                    panels.forEach(p => {
+                        p.classList.toggle('active', p.id === `panel-${target}`);
+                    });
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

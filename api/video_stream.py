@@ -315,32 +315,44 @@ def generate_demo_frame(lane: str, vehicle_count: int, phase: str = 'red', queue
     return buffer.tobytes()
 
 
-async def generate_mjpeg_stream(lane: str):
-    """Generate MJPEG stream for a lane"""
-    while True:
-        # Get current vehicle count and phase from simulation
-        simulation = app_state['simulation']
+def _current_lane_frame(lane: str) -> bytes:
+    """Return the JPEG frame to serve for ``lane``.
 
-        if simulation:
+    Prefers the live YOLO-annotated feed in video mode; falls back to the
+    synthetic generator when in demo mode (or before any frames are ready).
+    """
+    detector = app_state.get('detector')
+    if detector is not None:
+        live = detector.get_latest_jpeg(lane)
+        if live is not None:
+            return live
+
+    simulation = app_state.get('simulation')
+    if simulation is not None and hasattr(simulation, 'get_snapshot'):
+        try:
             snapshot = simulation.get_snapshot()
             lane_data = snapshot.get('lanes', {}).get(lane, {})
-            vehicle_count = lane_data.get('vehicle_count', 0)
-            phase = lane_data.get('phase', 'red')  # Get signal phase
-            queue = lane_data.get('queue', 0)  # Get queue length
+            return generate_demo_frame(
+                lane,
+                lane_data.get('vehicle_count', 0),
+                lane_data.get('phase', 'red'),
+                lane_data.get('queue', 0),
+            )
+        except Exception:
+            pass
+    return generate_placeholder_frame(lane)
 
-            # Generate demo frame with vehicles
-            frame_bytes = generate_demo_frame(lane, vehicle_count, phase, queue)
-        else:
-            # No simulation - show placeholder
-            frame_bytes = generate_placeholder_frame(lane)
 
-        # Yield frame in MJPEG format
+async def generate_mjpeg_stream(lane: str):
+    """Generate MJPEG stream for a lane (live YOLO feed or synthetic fallback)."""
+    import asyncio
+    is_video = app_state.get('detector') is not None
+    interval = 0.05 if is_video else 0.5  # ~20 FPS for real video, 2 FPS for synthetic
+    while True:
+        frame_bytes = _current_lane_frame(lane)
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
-        # Control frame rate (~2 FPS to save bandwidth)
-        import asyncio
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(interval)
 
 
 @router.get("/{lane}")
@@ -364,6 +376,24 @@ async def video_stream(lane: str):
     )
 
 
+@router.get("/violation/stream")
+async def violation_stream():
+    """MJPEG stream of the violation camera (video mode only)."""
+    vd = app_state.get('violation_detector')
+    if vd is None:
+        raise HTTPException(status_code=400, detail="Violation feed requires DETECTION_MODE=video")
+
+    async def gen():
+        import asyncio
+        while True:
+            frame = vd.get_latest_jpeg()
+            if frame is not None:
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            await asyncio.sleep(0.05)
+
+    return StreamingResponse(gen(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+
 @router.get("/{lane}/snapshot")
 async def video_snapshot(lane: str):
     """
@@ -379,16 +409,4 @@ async def video_snapshot(lane: str):
     if lane not in ['N', 'S', 'E', 'W']:
         raise HTTPException(status_code=400, detail="Invalid lane. Must be N, S, E, or W")
 
-    # Get current vehicle count and phase
-    simulation = app_state['simulation']
-    if simulation:
-        snapshot = simulation.get_snapshot()
-        lane_data = snapshot.get('lanes', {}).get(lane, {})
-        vehicle_count = lane_data.get('vehicle_count', 0)
-        phase = lane_data.get('phase', 'red')
-        queue = lane_data.get('queue', 0)
-        frame_bytes = generate_demo_frame(lane, vehicle_count, phase, queue)
-    else:
-        frame_bytes = generate_placeholder_frame(lane)
-
-    return StreamingResponse(io.BytesIO(frame_bytes), media_type="image/jpeg")
+    return StreamingResponse(io.BytesIO(_current_lane_frame(lane)), media_type="image/jpeg")

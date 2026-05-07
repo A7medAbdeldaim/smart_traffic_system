@@ -65,6 +65,11 @@ Thumbs.db
 # Environment variables (keep .env.example, ignore local)
 .env
 .env.local
+.env.bak
+*.bak
+
+# Runtime violation captures
+static/captures/
 
 # Temporary files
 tmp/

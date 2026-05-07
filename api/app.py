@@ -38,6 +38,16 @@ async def lifespan(app: FastAPI):
         from optimizer import signal_optimizer, emergency_handler
         from api.websocket import broadcast_traffic_update
 
+        # Pick the traffic data source: real video (YOLO) or synthetic demo
+        det_mode = os.getenv('DETECTION_MODE', 'demo').lower()
+        if det_mode == 'video':
+            from detection import feed_manager
+            traffic_source = feed_manager
+            source_label = "VIDEO (YOLOv11)"
+        else:
+            traffic_source = demo_sim
+            source_label = "DEMO (synthetic)"
+
         print("\n" + "=" * 60)
         print("🚦 SMART TRAFFIC CONTROL SYSTEM")
         print("   King Khalid University - Graduation Project")
@@ -51,18 +61,46 @@ async def lifespan(app: FastAPI):
         print("🚥 Setting up intersection configuration...")
         intersection_id = await db_manager.setup_default_intersection()
 
-        # Start simulation
-        print("🎮 Starting simulation (DEMO mode)...")
-        demo_sim.start()
+        # Start traffic data source
+        print(f"🎬 Starting traffic source: {source_label}")
+        traffic_source.start()
 
         # Inject app state
         app_state['db_manager'] = db_manager
-        app_state['simulation'] = demo_sim
+        app_state['simulation'] = traffic_source
         app_state['optimizer'] = signal_optimizer
         app_state['emergency_handler'] = emergency_handler
         app_state['intersection_id'] = intersection_id
         app_state['mode'] = 'ai_optimized'
+        app_state['detection_mode'] = det_mode
         app_state['running'] = True
+        if det_mode == 'video':
+            app_state['detector'] = traffic_source
+            from detection import enable_ambulance_detection, violation_detector
+            enable_ambulance_detection(emergency_handler)
+
+            # Start the violation detector with a DB-backed callback
+            main_loop = asyncio.get_running_loop()
+
+            def _on_violation(record: dict):
+                # called from the violation thread → schedule DB write on the loop
+                fut = asyncio.run_coroutine_threadsafe(
+                    db_manager.log_violation(
+                        plate_number=record["plate_number"],
+                        image_path=record["image_path"],
+                        direction=record.get("direction", "S-CAM"),
+                        reason=record.get("reason", "Red Light"),
+                    ),
+                    main_loop,
+                )
+                try:
+                    fut.result(timeout=5)
+                except Exception as e:
+                    print(f"  log_violation failed: {e}")
+
+            violation_detector.set_callback(_on_violation)
+            violation_detector.start()
+            app_state['violation_detector'] = violation_detector
 
         print("\n" + "=" * 60)
         print("✅ System initialization complete!")
@@ -75,8 +113,8 @@ async def lifespan(app: FastAPI):
 
             while app_state.get('running', False):
                 try:
-                    # Advance simulation
-                    lane_data = demo_sim.step()
+                    # Advance simulation / read latest detection counts
+                    lane_data = traffic_source.step()
 
                     # Handle emergency timeouts
                     if emergency_handler.check_emergency_timeout():
@@ -102,8 +140,8 @@ async def lifespan(app: FastAPI):
                         else:
                             green_times = {lane: 30 for lane in lane_data.keys()}
 
-                        # Update simulation with calculated green times
-                        demo_sim.set_green_times(green_times)
+                        # Feed calculated green times back to the source
+                        traffic_source.set_green_times(green_times)
 
                         # Log green time allocation every 30 cycles
                         if cycle_count % 30 == 0:
@@ -185,6 +223,8 @@ async def lifespan(app: FastAPI):
         control_task.cancel()
     if app_state.get('simulation'):
         app_state['simulation'].stop()
+    if app_state.get('violation_detector'):
+        app_state['violation_detector'].stop()
     if app_state.get('db_manager'):
         await app_state['db_manager'].close()
     print("✓ FastAPI application shutting down...")

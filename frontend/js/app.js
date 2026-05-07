@@ -270,9 +270,22 @@ class TrafficDashboard {
             }
         });
 
-        // Update intersection animation
-        intersectionAnimator.updateSignals(data.lanes);
-        intersectionAnimator.updateVehicles(data.lanes);
+        // Update phase badge on each video tile
+        ['N', 'S', 'E', 'W'].forEach(lane => {
+            const badge = document.getElementById(`badge-${lane}`);
+            const ld = data.lanes[lane];
+            if (badge && ld) {
+                const phase = (ld.phase || 'red').toUpperCase();
+                badge.textContent = phase;
+                badge.className = `video-tile-badge phase-${phase.toLowerCase()}`;
+            }
+        });
+
+        // Update simulation tab (SVG schematic)
+        if (typeof intersectionAnimator !== 'undefined') {
+            intersectionAnimator.updateSignals(data.lanes);
+            intersectionAnimator.updateVehicles(data.lanes);
+        }
 
         // Update emergency status
         this.updateEmergencyStatus(data.emergency_active, data.emergency_lane);

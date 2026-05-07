@@ -18,3 +18,11 @@ python-multipart>=0.0.6
 
 # Environment variables
 python-dotenv>=1.0.0
+
+# Computer Vision (YOLO-based vehicle detection)
+ultralytics>=8.3.0
+opencv-python>=4.8.0
+numpy>=1.26.0
+
+# OCR for license plate recognition (red-light violations)
+easyocr>=1.7.0

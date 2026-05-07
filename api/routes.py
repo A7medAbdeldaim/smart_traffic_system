@@ -244,3 +244,53 @@ async def toggle_mode():
         "mode": new_mode,
         "message": f"Switched to {new_mode} mode"
     }
+
+
+@router.post("/violation_detection/{action}")
+async def toggle_violation_detection(action: str):
+    """Enable or disable red-light violation capture (video mode only)."""
+    vd = app_state.get('violation_detector')
+    if vd is None:
+        raise HTTPException(status_code=400, detail="Violation detection requires DETECTION_MODE=video")
+    if action not in ('start', 'stop'):
+        raise HTTPException(status_code=400, detail="action must be 'start' or 'stop'")
+    vd.enabled = (action == 'start')
+    print(f"🚨 Violation detection {'ENABLED' if vd.enabled else 'DISABLED'}")
+    return {"success": True, "enabled": vd.enabled}
+
+
+@router.get("/violations")
+async def list_violations(limit: int = 50):
+    """Recent red-light violations, newest first."""
+    db = app_state.get('db_manager')
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    return {"violations": await db.get_violations(limit=limit)}
+
+
+@router.post("/violations/{vid}/pay")
+async def assign_fine(vid: int):
+    db = app_state.get('db_manager')
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not initialized")
+    ok = await db.mark_violation_paid(vid)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Violation not found")
+    return {"success": True, "id": vid, "status": "Paid"}
+
+
+@router.post("/ambulance_detection/{action}")
+async def toggle_ambulance_detection(action: str):
+    """Enable or disable ambulance preemption (video mode only).
+
+    Off by default — the bundled YOLO ambulance model has a high false-positive
+    rate on ordinary traffic, so it must be explicitly turned on.
+    """
+    detector = app_state.get('detector')
+    if detector is None:
+        raise HTTPException(status_code=400, detail="Ambulance detection requires DETECTION_MODE=video")
+    if action not in ('start', 'stop'):
+        raise HTTPException(status_code=400, detail="action must be 'start' or 'stop'")
+    detector.ambulance_detection_enabled = (action == 'start')
+    print(f"🚑 Ambulance detection {'ENABLED' if detector.ambulance_detection_enabled else 'DISABLED'}")
+    return {"success": True, "enabled": detector.ambulance_detection_enabled}

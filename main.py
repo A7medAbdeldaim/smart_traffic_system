@@ -27,6 +27,17 @@ from optimizer import signal_optimizer, emergency_handler
 from api import app, app_state, broadcast_traffic_update
 
 
+def _select_traffic_source():
+    """Pick the traffic data source: real video (YOLO) or synthetic demo."""
+    mode = os.getenv('DETECTION_MODE', 'demo').lower()
+    if mode == 'video':
+        from detection import feed_manager
+        print("🎥 Detection mode: VIDEO (YOLOv11 on .mp4 feeds)")
+        return feed_manager, 'video'
+    print("🎮 Detection mode: DEMO (synthetic generator)")
+    return demo_sim, 'demo'
+
+
 class TrafficControlSystem:
     """Main system coordinator"""
 
@@ -38,7 +49,7 @@ class TrafficControlSystem:
 
         # Components
         self.db_manager = db_manager
-        self.simulation = demo_sim
+        self.simulation, self.detection_mode = _select_traffic_source()
         self.optimizer = signal_optimizer
         self.emergency_handler = emergency_handler
 
@@ -68,6 +79,12 @@ class TrafficControlSystem:
         app_state['emergency_handler'] = self.emergency_handler
         app_state['intersection_id'] = self.intersection_id
         app_state['mode'] = 'ai_optimized'
+        app_state['detection_mode'] = self.detection_mode
+        # Expose detector + enable ambulance detection in video mode
+        if self.detection_mode == 'video':
+            app_state['detector'] = self.simulation
+            from detection import enable_ambulance_detection
+            enable_ambulance_detection(self.emergency_handler)
 
         print("\n" + "=" * 60)
         print("✅ System initialization complete!")
