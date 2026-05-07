@@ -38,8 +38,9 @@ async def lifespan(app: FastAPI):
         from optimizer import signal_optimizer, emergency_handler
         from api.websocket import broadcast_traffic_update
 
-        # Pick the traffic data source: real video (YOLO) or synthetic demo
-        det_mode = os.getenv('DETECTION_MODE', 'demo').lower()
+        # Pick the traffic data source: real video (YOLO) or synthetic demo.
+        # Default 'video' for deployments; override with DETECTION_MODE=demo only locally.
+        det_mode = os.getenv('DETECTION_MODE', 'video').lower()
         if det_mode == 'video':
             from detection import feed_manager
             traffic_source = feed_manager

@@ -5,8 +5,9 @@ from pydantic_settings import BaseSettings
 class DetectionConfig(BaseSettings):
     """Settings for YOLO-based video vehicle detection"""
 
-    # Source mode: "video" (real videos + YOLO) or "demo" (synthetic generator)
-    detection_mode: str = "demo"
+    # Source mode: "video" (real videos + YOLO) or "demo" (synthetic generator).
+    # Hardcoded to "video" — this is the production default for deployments.
+    detection_mode: str = "video"
 
     # Models
     yolo_model_path: str = "./models/yolo11n.pt"

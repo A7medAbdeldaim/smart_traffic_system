@@ -28,8 +28,12 @@ from api import app, app_state, broadcast_traffic_update
 
 
 def _select_traffic_source():
-    """Pick the traffic data source: real video (YOLO) or synthetic demo."""
-    mode = os.getenv('DETECTION_MODE', 'demo').lower()
+    """Pick the traffic data source: real video (YOLO) or synthetic demo.
+
+    Defaults to 'video' for deployments. Override with DETECTION_MODE=demo
+    only for local CPU-constrained dev or the evaluation scripts.
+    """
+    mode = os.getenv('DETECTION_MODE', 'video').lower()
     if mode == 'video':
         from detection import feed_manager
         print("🎥 Detection mode: VIDEO (YOLOv11 on .mp4 feeds)")
