@@ -207,6 +207,7 @@
                         <div class="video-tile" data-lane="N">
                             <div class="video-tile-header">
                                 <span class="video-tile-label">↑ NORTH</span>
+                                <button class="video-tile-upload" data-lane="N" title="Upload video for North">⤴</button>
                                 <span class="video-tile-badge" id="badge-N">RED</span>
                             </div>
                             <img class="video-tile-feed" data-lane="N" src="/api/video/N" alt="North lane feed"
@@ -215,6 +216,7 @@
                         <div class="video-tile" data-lane="E">
                             <div class="video-tile-header">
                                 <span class="video-tile-label">→ EAST</span>
+                                <button class="video-tile-upload" data-lane="E" title="Upload video for East">⤴</button>
                                 <span class="video-tile-badge" id="badge-E">RED</span>
                             </div>
                             <img class="video-tile-feed" data-lane="E" src="/api/video/E" alt="East lane feed"
@@ -223,6 +225,7 @@
                         <div class="video-tile" data-lane="S">
                             <div class="video-tile-header">
                                 <span class="video-tile-label">↓ SOUTH</span>
+                                <button class="video-tile-upload" data-lane="S" title="Upload video for South">⤴</button>
                                 <span class="video-tile-badge" id="badge-S">RED</span>
                             </div>
                             <img class="video-tile-feed" data-lane="S" src="/api/video/S" alt="South lane feed"
@@ -231,6 +234,7 @@
                         <div class="video-tile" data-lane="W">
                             <div class="video-tile-header">
                                 <span class="video-tile-label">← WEST</span>
+                                <button class="video-tile-upload" data-lane="W" title="Upload video for West">⤴</button>
                                 <span class="video-tile-badge" id="badge-W">RED</span>
                             </div>
                             <img class="video-tile-feed" data-lane="W" src="/api/video/W" alt="West lane feed"
@@ -298,6 +302,12 @@
             🚨 Emergency Override
         </button>
 
+        <!-- Hidden file input shared by all upload buttons -->
+        <input type="file" id="video-upload-input" accept="video/*,.mp4,.mov,.mkv,.avi,.webm" style="display:none">
+
+        <!-- Toast / status message for uploads -->
+        <div class="upload-toast" id="upload-toast" hidden></div>
+
         <!-- Emergency Modal -->
         <div class="modal" id="emergency-modal">
             <div class="modal-content">
@@ -333,6 +343,63 @@
                         p.classList.toggle('active', p.id === `panel-${target}`);
                     });
                 });
+            });
+        })();
+
+        // Per-lane video upload
+        (function () {
+            const fileInput = document.getElementById('video-upload-input');
+            const toast = document.getElementById('upload-toast');
+            let pendingLane = null;
+
+            function showToast(msg, kind = 'info') {
+                toast.textContent = msg;
+                toast.className = `upload-toast kind-${kind}`;
+                toast.hidden = false;
+                clearTimeout(showToast._t);
+                showToast._t = setTimeout(() => { toast.hidden = true; }, 4500);
+            }
+
+            document.querySelectorAll('.video-tile-upload').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    pendingLane = btn.dataset.lane;
+                    fileInput.value = ''; // allow re-uploading same filename
+                    fileInput.click();
+                });
+            });
+
+            fileInput.addEventListener('change', async () => {
+                if (!fileInput.files.length || !pendingLane) return;
+                const lane = pendingLane;
+                const file = fileInput.files[0];
+                const sizeMB = file.size / 1024 / 1024;
+                if (sizeMB > 200) {
+                    showToast(`File too large (${sizeMB.toFixed(1)} MB). Max 200 MB.`, 'error');
+                    return;
+                }
+                showToast(`Uploading ${file.name} (${sizeMB.toFixed(1)} MB) for ${lane}…`, 'info');
+
+                try {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const res = await fetch(`/api/video/upload/${lane}`, { method: 'POST', body: fd });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({ detail: res.statusText }));
+                        showToast(`Upload failed: ${err.detail || res.statusText}`, 'error');
+                        return;
+                    }
+                    showToast(`✓ ${lane} now playing your video`, 'success');
+                    // Force the <img> to reconnect so the user sees the new feed immediately
+                    const img = document.querySelector(`.video-tile-feed[data-lane="${lane}"]`);
+                    if (img) {
+                        const base = `/api/video/${lane}`;
+                        img.src = `${base}?t=${Date.now()}`;
+                    }
+                } catch (e) {
+                    showToast(`Upload error: ${e.message}`, 'error');
+                } finally {
+                    pendingLane = null;
+                }
             });
         })();
     </script>

@@ -71,6 +71,10 @@ Thumbs.db
 # Runtime violation captures
 static/captures/
 
+# Per-lane video uploads (saved at runtime via the dashboard)
+video/uploaded_*.*
+video/_uploaded_paths.json
+
 # Temporary files
 tmp/
 temp/

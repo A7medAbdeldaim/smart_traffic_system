@@ -1,5 +1,6 @@
 """REST API routes"""
-from fastapi import APIRouter, HTTPException
+import os
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from typing import List
 from datetime import datetime
 
@@ -16,6 +17,10 @@ from .schemas import (
 from .app import app_state
 
 router = APIRouter(prefix="/api", tags=["traffic"])
+
+# Caps on uploaded videos (server-side defence; UI also limits)
+MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
+ALLOWED_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
 
 @router.get("/status", response_model=IntersectionStatus)
@@ -277,6 +282,77 @@ async def assign_fine(vid: int):
     if not ok:
         raise HTTPException(status_code=404, detail="Violation not found")
     return {"success": True, "id": vid, "status": "Paid"}
+
+
+@router.post("/video/upload/{lane}")
+async def upload_lane_video(lane: str, file: UploadFile = File(...)):
+    """Upload a new .mp4 to replace the live feed for a lane.
+
+    The running detector hot-reloads the video — no service restart needed.
+    The path is persisted to ``video/_uploaded_paths.json`` so it survives
+    systemctl restarts.
+    """
+    if lane not in ("N", "E", "S", "W"):
+        raise HTTPException(status_code=400, detail="lane must be N, E, S, or W")
+
+    detector = app_state.get("detector")
+    if detector is None:
+        raise HTTPException(status_code=400, detail="Video upload requires DETECTION_MODE=video")
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"unsupported file type {ext!r}; allowed: {sorted(ALLOWED_EXTS)}",
+        )
+
+    os.makedirs("video", exist_ok=True)
+    out_path = os.path.join("video", f"uploaded_{lane}{ext}")
+
+    # Stream to disk in 1MB chunks; bail if over the cap
+    written = 0
+    with open(out_path, "wb") as out:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            written += len(chunk)
+            if written > MAX_UPLOAD_BYTES:
+                out.close()
+                try:
+                    os.remove(out_path)
+                except OSError:
+                    pass
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"file exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit",
+                )
+            out.write(chunk)
+
+    try:
+        detector.replace_video(lane, out_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"detector reload failed: {e}")
+
+    print(f"📤 Uploaded video for {lane}: {out_path} ({written / 1024 / 1024:.1f} MB)")
+    return {
+        "success": True,
+        "lane": lane,
+        "path": out_path,
+        "size_bytes": written,
+    }
+
+
+@router.get("/video/sources")
+async def get_video_sources():
+    """Return the current video file path per lane (default or user-uploaded)."""
+    detector = app_state.get("detector")
+    if detector is None:
+        return {"detector": None, "sources": {}}
+    return {
+        "detector": "video",
+        "sources": dict(detector.current_paths),
+    }
 
 
 @router.post("/ambulance_detection/{action}")

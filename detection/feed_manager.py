@@ -10,6 +10,7 @@ the same reason: DemoSimulation owns it today, and we want a drop-in swap.
 """
 from __future__ import annotations
 
+import json
 import os
 import random
 import threading
@@ -25,6 +26,10 @@ from .vehicle_detector import vehicle_detector
 
 
 LANES = ["N", "E", "S", "W"]
+
+# JSON file that persists user-uploaded video paths across restarts.
+# Lives next to the .mp4 files so paths in it stay valid relative to CWD.
+UPLOADED_PATHS_STATE = os.path.join("video", "_uploaded_paths.json")
 
 
 class _LaneState:
@@ -54,6 +59,14 @@ class FeedManager:
     def __init__(self):
         self.lanes = LANES
         self.states: Dict[str, _LaneState] = {l: _LaneState(l) for l in self.lanes}
+
+        # Per-lane current video path. Defaults from config; overridden by any
+        # entries in UPLOADED_PATHS_STATE (set when the user uploads via the API).
+        self.current_paths: Dict[str, str] = dict(LANE_VIDEO_MAP)
+        self._reload_evts: Dict[str, threading.Event] = {
+            l: threading.Event() for l in self.lanes
+        }
+        self._load_uploaded_paths()
 
         # Phase state machine (mirrors DemoSimulation)
         # 0 = N/S green, 1 = N/S yellow, 2 = E/W green, 3 = E/W yellow
@@ -99,7 +112,7 @@ class FeedManager:
 
     # ── Per-lane worker ───────────────────────────────────────────────────────
     def _lane_loop(self, lane: str):
-        path = LANE_VIDEO_MAP[lane]
+        path = self.current_paths[lane]
         if not os.path.exists(path):
             print(f"⚠️  [{lane}] video not found: {path} — thread exiting")
             return
@@ -110,6 +123,18 @@ class FeedManager:
         st = self.states[lane]
 
         while not self._stop_evt.is_set():
+            # Hot-reload: pick up a newly uploaded video without restarting
+            if self._reload_evts[lane].is_set():
+                cap.release()
+                new_path = self.current_paths[lane]
+                if not os.path.exists(new_path):
+                    print(f"⚠️  [{lane}] reload requested but file missing: {new_path}")
+                    self._reload_evts[lane].clear()
+                    return
+                cap = cv2.VideoCapture(new_path)
+                self._reload_evts[lane].clear()
+                print(f"🔄 [{lane}] video swapped → {new_path}")
+
             ok, frame = cap.read()
             if not ok or frame is None:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
@@ -288,3 +313,39 @@ class FeedManager:
                 self.states[lane].ambulance = True
             return True
         return False
+
+    # ── User-uploaded video swaps ─────────────────────────────────────────────
+    def replace_video(self, lane: str, new_path: str) -> None:
+        """Atomically swap the video file for a lane. Worker reopens the
+        capture on its next loop iteration — no service restart required.
+        """
+        if lane not in self.lanes:
+            raise ValueError(f"unknown lane: {lane}")
+        if not os.path.exists(new_path):
+            raise FileNotFoundError(new_path)
+        self.current_paths[lane] = new_path
+        self._save_uploaded_paths()
+        self._reload_evts[lane].set()
+
+    def _load_uploaded_paths(self) -> None:
+        if not os.path.exists(UPLOADED_PATHS_STATE):
+            return
+        try:
+            with open(UPLOADED_PATHS_STATE, "r") as f:
+                data = json.load(f)
+            for lane, path in data.items():
+                if lane in self.lanes and os.path.exists(path):
+                    self.current_paths[lane] = path
+                    print(f"  [{lane}] using uploaded video: {path}")
+        except Exception as e:
+            print(f"  failed to load uploaded paths state: {e}")
+
+    def _save_uploaded_paths(self) -> None:
+        # Only persist entries that differ from the default (cleaner state file)
+        diff = {l: p for l, p in self.current_paths.items() if p != LANE_VIDEO_MAP[l]}
+        try:
+            os.makedirs(os.path.dirname(UPLOADED_PATHS_STATE) or ".", exist_ok=True)
+            with open(UPLOADED_PATHS_STATE, "w") as f:
+                json.dump(diff, f, indent=2)
+        except Exception as e:
+            print(f"  failed to save uploaded paths state: {e}")
