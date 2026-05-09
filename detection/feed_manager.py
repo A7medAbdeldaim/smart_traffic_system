@@ -77,6 +77,12 @@ class FeedManager:
         self.step_count: int = 0
         self._phase_lock = threading.RLock()
 
+        # Emergency override: when set, that lane forces green and all others red.
+        # The broadcast layer + MJPEG overlay both read _lane_phase, so this
+        # propagates everywhere automatically.
+        self._emergency_lane: Optional[str] = None
+        self._emergency_remaining: int = 0
+
         # Worker threads
         self._stop_evt = threading.Event()
         self._threads: list[threading.Thread] = []
@@ -197,6 +203,9 @@ class FeedManager:
     # ── Phase state machine (same shape as DemoSimulation) ────────────────────
     def _lane_phase(self, lane: str) -> str:
         with self._phase_lock:
+            # Emergency override wins over the normal cycle
+            if self._emergency_lane is not None:
+                return "green" if lane == self._emergency_lane else "red"
             if self.current_phase == 0:
                 return "green" if lane in ("N", "S") else "red"
             if self.current_phase == 2:
@@ -209,6 +218,8 @@ class FeedManager:
 
     def _lane_remaining(self, lane: str) -> int:
         with self._phase_lock:
+            if self._emergency_lane is not None:
+                return self._emergency_remaining if lane == self._emergency_lane else 0
             return self.phase_remaining if self._lane_phase(lane) != "red" else 0
 
     def _next_phase(self):
@@ -233,14 +244,30 @@ class FeedManager:
         with self._phase_lock:
             self.phase_remaining = seconds
 
+    def apply_emergency_override(self, lane: str, duration: int) -> None:
+        """Force one lane green and all others red, regardless of the cycle."""
+        if lane not in self.lanes:
+            raise ValueError(f"unknown lane: {lane}")
+        with self._phase_lock:
+            self._emergency_lane = lane
+            self._emergency_remaining = max(1, int(duration))
+
+    def clear_emergency_override(self) -> None:
+        with self._phase_lock:
+            self._emergency_lane = None
+            self._emergency_remaining = 0
+
     # ── Public API consumed by the control loop ───────────────────────────────
     def step(self) -> Dict[str, Dict]:
         """Advance phase by 1s and return the same lane_data shape as DemoSimulation."""
         self.step_count += 1
         with self._phase_lock:
-            self.phase_remaining -= 1
-            if self.phase_remaining <= 0:
-                self._next_phase()
+            if self._emergency_lane is not None:
+                self._emergency_remaining = max(0, self._emergency_remaining - 1)
+            else:
+                self.phase_remaining -= 1
+                if self.phase_remaining <= 0:
+                    self._next_phase()
         return self.get_all_lane_data()
 
     def get_all_lane_data(self) -> Dict[str, Dict]:

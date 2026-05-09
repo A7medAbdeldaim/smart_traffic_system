@@ -108,11 +108,21 @@ class TrafficControlSystem:
                 # Check for emergency timeout
                 if self.emergency_handler.check_emergency_timeout():
                     summary = self.emergency_handler.clear_emergency()
+                    if hasattr(self.simulation, 'clear_emergency_override'):
+                        self.simulation.clear_emergency_override()
                     if summary and summary.get('event_id'):
                         await self.db_manager.resolve_emergency(summary['event_id'])
 
                 # Determine signal timings (calculate but don't write to DB every cycle)
                 if self.emergency_handler.is_emergency_active():
+                    # Force the traffic source into the override (so MJPEG overlay
+                    # and WebSocket broadcast both reflect the emergency state).
+                    em_lane = self.emergency_handler.get_active_emergency_lane()
+                    if em_lane and hasattr(self.simulation, 'apply_emergency_override'):
+                        self.simulation.apply_emergency_override(
+                            em_lane, self.emergency_handler.override_duration
+                        )
+
                     # Emergency override
                     signal_override = self.emergency_handler.get_emergency_signal_override()
                     # Only update DB on emergency state changes, not every cycle

@@ -58,10 +58,14 @@ class DemoSimulation:
         """Advance simulation by one step and return lane metrics"""
         self.step_count += 1
 
-        # Decrement phase timer
-        self.phase_remaining -= 1
-        if self.phase_remaining <= 0:
-            self._next_phase()
+        # Emergency override pauses the normal cycle and counts itself down
+        if getattr(self, '_emergency_lane', None) is not None:
+            self._emergency_remaining = max(0, self._emergency_remaining - 1)
+        else:
+            # Decrement phase timer
+            self.phase_remaining -= 1
+            if self.phase_remaining <= 0:
+                self._next_phase()
 
         # Update vehicle counts for each lane
         for lane in self.lanes:
@@ -178,6 +182,15 @@ class DemoSimulation:
         else:
             waiting_time = vehicle_count * random.uniform(8, 15)
 
+        # Emergency override (set via apply_emergency_override) wins over the cycle
+        em_lane = getattr(self, '_emergency_lane', None)
+        if em_lane is not None:
+            phase = 'green' if lane == em_lane else 'red'
+            remaining = getattr(self, '_emergency_remaining', 0) if lane == em_lane else 0
+        else:
+            phase = 'green' if is_green else ('yellow' if self.current_phase in [1, 3] else 'red')
+            remaining = self.phase_remaining
+
         return {
             'vehicle_count': vehicle_count,
             'counts': counts,
@@ -185,18 +198,31 @@ class DemoSimulation:
             'speed': avg_speed,
             'queue': queue,
             'waiting_time': waiting_time,
-            'phase': 'green' if is_green else ('yellow' if self.current_phase in [1, 3] else 'red'),
-            'remaining': self.phase_remaining
+            'phase': phase,
+            'remaining': remaining,
         }
 
     def _is_green_for_lane(self, lane: str) -> bool:
         """Check if a lane has green light"""
+        # Emergency override
+        em_lane = getattr(self, '_emergency_lane', None)
+        if em_lane is not None:
+            return lane == em_lane
         if self.current_phase == 0:  # N/S green
             return lane in ['N', 'S']
         elif self.current_phase == 2:  # E/W green
             return lane in ['E', 'W']
         else:  # Yellow phases
             return False
+
+    def apply_emergency_override(self, lane: str, duration: int) -> None:
+        """Force one lane green and all others red, regardless of the cycle."""
+        self._emergency_lane = lane
+        self._emergency_remaining = max(1, int(duration))
+
+    def clear_emergency_override(self) -> None:
+        self._emergency_lane = None
+        self._emergency_remaining = 0
 
     def _next_phase(self):
         """Move to next traffic light phase"""

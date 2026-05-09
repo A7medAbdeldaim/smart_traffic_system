@@ -120,11 +120,21 @@ async def lifespan(app: FastAPI):
                     # Handle emergency timeouts
                     if emergency_handler.check_emergency_timeout():
                         summary = emergency_handler.clear_emergency()
+                        if hasattr(traffic_source, 'clear_emergency_override'):
+                            traffic_source.clear_emergency_override()
                         if summary and summary.get('event_id'):
                             await db_manager.resolve_emergency(summary['event_id'])
 
                     # Calculate signal timings
                     if emergency_handler.is_emergency_active():
+                        # Force the traffic source into the override (so the WebSocket
+                        # broadcast and the live MJPEG overlay both reflect it).
+                        em_lane = emergency_handler.get_active_emergency_lane()
+                        if em_lane and hasattr(traffic_source, 'apply_emergency_override'):
+                            traffic_source.apply_emergency_override(
+                                em_lane, emergency_handler.override_duration
+                            )
+
                         signal_override = emergency_handler.get_emergency_signal_override()
                         if cycle_count % 5 == 0 and signal_override:
                             for lane, config in signal_override.items():
