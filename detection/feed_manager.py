@@ -126,6 +126,7 @@ class FeedManager:
         cap = cv2.VideoCapture(path)
         target_dt = 1.0 / max(1, det_config.inference_fps)
         last_inf = 0.0
+        last_raw_frame = None  # cached frame for freezeframe-on-red
         st = self.states[lane]
 
         while not self._stop_evt.is_set():
@@ -138,20 +139,31 @@ class FeedManager:
                     self._reload_evts[lane].clear()
                     return
                 cap = cv2.VideoCapture(new_path)
+                last_raw_frame = None
                 self._reload_evts[lane].clear()
                 print(f"🔄 [{lane}] video swapped → {new_path}")
 
-            ok, frame = cap.read()
-            if not ok or frame is None:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                continue
+            phase = self._lane_phase(lane)
+
+            # Freezeframe when red/yellow: don't advance the video, reuse last frame.
+            # Inference is also skipped (frozen frame ⇒ counts unchanged) — but the
+            # overlay still re-renders each tick so the timer keeps counting down.
+            if phase == "green" or last_raw_frame is None:
+                ok, frame = cap.read()
+                if not ok or frame is None:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    continue
+                last_raw_frame = frame
+            else:
+                frame = last_raw_frame.copy()
 
             frame = cv2.resize(frame, (det_config.display_width, det_config.display_height))
             now = time.time()
 
             # Throttle YOLO inference (CPU-bound). Reuse last detections for
             # frames in between so the displayed video stays smooth.
-            do_inference = (now - last_inf) >= target_dt
+            # Skip inference entirely while frozen on red/yellow — same frame, same counts.
+            do_inference = phase == "green" and (now - last_inf) >= target_dt
             if do_inference:
                 boxes, class_ids = vehicle_detector.detect(frame)
                 counts, total = vehicle_detector.count_in_roi(boxes, class_ids, lane)
@@ -184,7 +196,7 @@ class FeedManager:
                 boxes_s, cls_s = st.boxes, st.class_ids
                 vc = st.vehicle_count
                 amb = st.ambulance
-            phase = self._lane_phase(lane)
+            # phase already computed above; refresh the live timer here
             timer = self._lane_remaining(lane)
 
             annotated = vehicle_detector.draw_overlay(

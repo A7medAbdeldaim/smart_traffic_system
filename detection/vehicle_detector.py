@@ -97,25 +97,46 @@ class VehicleDetector:
             cv2.putText(frame, cname.upper(), (x1, y1 - 4),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, col, 2)
 
-        # Info panel (bottom-left)
+        # Info panel (bottom-left). Wider + taller so the COUNT and TIMER
+        # numbers can be drawn at large sizes — readable from across the room.
         h, w = frame.shape[:2]
-        pw, ph = 360, 130
+        pw, ph = 460, 230
         px, py = 16, h - ph - 16
         ov2 = frame.copy()
         cv2.rectangle(ov2, (px, py), (px + pw, py + ph), (0, 0, 0), -1)
-        cv2.addWeighted(ov2, 0.85, frame, 0.15, 0, frame)
-        cv2.rectangle(frame, (px, py), (px + pw, py + ph), sig_color, 2)
+        cv2.addWeighted(ov2, 0.88, frame, 0.12, 0, frame)
+        cv2.rectangle(frame, (px, py), (px + pw, py + ph), sig_color, 3)
 
-        cv2.putText(frame, f"{lane}  {label}", (px + 12, py + 38),
-                    cv2.FONT_HERSHEY_DUPLEX, 1.0, sig_color, 2)
-        cv2.putText(frame, f"COUNT: {vehicle_count}", (px + 12, py + 78),
-                    cv2.FONT_HERSHEY_DUPLEX, 0.7, (255, 255, 255), 2)
-        cv2.putText(frame, f"TIMER: {timer}s", (px + 12, py + 110),
-                    cv2.FONT_HERSHEY_DUPLEX, 0.7, (200, 200, 200), 2)
+        # Lane name + state label (top of the panel)
+        cv2.putText(frame, f"{lane}  {label}", (px + 14, py + 44),
+                    cv2.FONT_HERSHEY_DUPLEX, 1.2, sig_color, 3)
+        cv2.line(frame, (px + 14, py + 60), (px + pw - 14, py + 60), sig_color, 2)
+
+        # Vehicle count — big number
+        cv2.putText(frame, "VEHICLES", (px + 14, py + 92),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (170, 170, 170), 2)
+        cv2.putText(frame, str(vehicle_count), (px + 14, py + 148),
+                    cv2.FONT_HERSHEY_DUPLEX, 1.8, (255, 255, 255), 4)
+
+        # Countdown timer — also big, on the right side of the panel
+        cv2.putText(frame, "TIMER", (px + 240, py + 92),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (170, 170, 170), 2)
+        timer_color = (0, 255, 0) if signal_state == "green" else (
+            (0, 200, 255) if signal_state == "yellow" else (0, 0, 255)
+        )
+        cv2.putText(frame, f"{timer}s", (px + 240, py + 148),
+                    cv2.FONT_HERSHEY_DUPLEX, 1.8, timer_color, 4)
+
+        # Status hint at the bottom of the panel
+        if signal_state != "green":
+            cv2.putText(frame, "VIDEO PAUSED (waiting for green)",
+                        (px + 14, py + 196), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                        (140, 140, 140), 2)
+
         if ambulance:
-            cv2.rectangle(frame, (w - 240, 16), (w - 16, 56), (0, 0, 200), -1)
-            cv2.putText(frame, "AMBULANCE", (w - 230, 44),
-                        cv2.FONT_HERSHEY_DUPLEX, 0.8, (255, 255, 255), 2)
+            cv2.rectangle(frame, (w - 260, 16), (w - 16, 60), (0, 0, 200), -1)
+            cv2.putText(frame, "AMBULANCE", (w - 250, 47),
+                        cv2.FONT_HERSHEY_DUPLEX, 0.9, (255, 255, 255), 2)
         return frame
 
 
